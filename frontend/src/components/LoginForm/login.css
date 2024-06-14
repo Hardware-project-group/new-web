@@ -1,0 +1,59 @@
+.login-container{
+    border: 1px solid black;
+    padding: 2rem 1.5rem;
+    border-radius: 2rem;
+}
+.logo{
+    width: 3rem;
+}
+.upper{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 3rem;
+    img{
+        padding-bottom: 1rem;
+    }
+    h2{
+        font-weight: bold;
+        font-size: 1.4rem;
+    }
+}
+.down{
+    display: flex;
+    flex-direction: column;
+    input{
+        margin-bottom: 1.3rem;
+        background: transparent;
+        outline: none;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        width: 300px;
+
+    }
+    button{
+        background-color: blue;
+        color: white;
+        padding: 0.5rem 2rem;
+        font-weight: 600;
+        width: fit-content;
+        display: flex;
+        border-radius: 2rem;
+    }
+    label{
+        font-weight: 600;
+    }
+}
+.btn{
+    background-color: #555555;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+.navigatesection{
+    display: flex;
+    gap: 0.5rem;
+}
