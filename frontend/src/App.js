@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Nav from './components/Nav/Nav';
 import LoginForm from './components/LoginForm/LoginForm';
 import User from './pages/user';
+import Profile from './pages/Profile';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -73,6 +74,7 @@ function App() {
             <Route path='/' element={<Home />} />
             <Route path='/login' element={<LoginForm onLogin={handleLogin} user={user} />} />
             <Route path='/user' element={<User />} user={ user} />
+            <Route path='/profile' element={<Profile/>} user={ user} />
           </Routes>
         </BrowserRouter>
       </main>

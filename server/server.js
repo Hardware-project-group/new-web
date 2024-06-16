@@ -85,6 +85,42 @@ app.post('/logout', (req, res) => {
     res.status(200).json({ message: 'Logout successful' });
   });
 });
+app.post('/create-user', (req, res) => {
+  const { username, password, userType } = req.body;
+  console.log(username, password, userType);
+  console.log(req.body);
+
+  // Validate input data
+  if (!username || !password || !userType) {
+    console.log("Error one");
+    return res.status(400).json({ error: 'Please provide username, password, and userType' });
+  }
+
+  const query = 'INSERT INTO users (username, userpassword, userType) VALUES (?, ?, ?)';
+
+  con.query(query, [username, password, userType], (err, result) => {
+    if (err) {
+      console.error('Error inserting data into MySQL:', err);
+      return res.status(500).json({ error: 'Failed to create user' });
+    }
+    
+    const userId = result.insertId;
+    const selectQuery = 'SELECT username, userId, userType FROM users WHERE userId = ?';
+    
+    con.query(selectQuery, [userId], (err, result) => {
+      if (err) {
+        console.error('Error querying database:', err.stack);
+        return res.status(500).json({ message: 'Database error' });
+      }
+
+      if (result.length > 0) {
+        res.status(201).json(result[0]);
+      } else {
+        res.status(404).json({ message: 'User not found' });
+      }
+    });
+  });
+});
 
 app.get('/check-session', (req, res) => {
   if (req.session.username) {
