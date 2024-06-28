@@ -44,13 +44,13 @@ function LoginForm({ onLogin , user}) {
             ) : (
                     <div>
                         <div className="navigatesection">
-                            <span className='btn'>Stock Details</span>
+                            <span className='btn'><a href='/stockDetails'>Stock Details</a></span>
                             {user.userType === "access" || user.userType === "admin" && 
-                                <span className='btn'>Access History</span>
+                                <span className='btn'><a href="/access">Access History</a></span>
                             }
                             {user.userType === "admin" && 
                                 <>
-                                    <span className='btn'>Product Details</span>
+                                    <span className='btn'>Update Stock</span>
                                     <span className='btn'><a href="/user">User Details</a></span>
                                     <span className='btn'>System Setting</span>
                                 </>

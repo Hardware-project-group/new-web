@@ -7,12 +7,14 @@
     padding: 1rem 2rem;
     border-radius: 1rem;
     color: white;
+    max-width: 15rem;
 }
 .image{
     width: 10rem;
 }
 .name{
     font-size: 1.3rem;
+    align-items: normal;
 }
 .type{
     font-size: small;

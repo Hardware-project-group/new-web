@@ -1,0 +1,24 @@
+.product-container{
+    background: #bebaba;
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    img{
+        width: 10rem;
+    }
+}
+.p-name{
+    color: black;
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+.p-code{
+    font-weight: 500;
+}
+.stocklevel{
+    color: rgb(19, 7, 7);
+    font-weight: 700;
+}

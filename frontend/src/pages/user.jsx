@@ -44,6 +44,33 @@ const handleEnroll1 = async () => {
   }
 };
 
+  
+const handleEnroll2 = async () => {
+  const encodedData = new URLSearchParams(`fingerID=${newuser.userId}`);
+
+  try {
+    const response = await fetch('http://192.168.137.177/enroll', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: encodedData.toString(),
+    });
+    console.log(response);
+    const responseBody = await response.text(); // Read the response body as text
+    console.log(responseBody);
+
+    if (response.ok) {
+      alert('Enroll Success: ' + responseBody); // Display the response body in the alert
+      document.getElementById('outside').style.display = "none";
+    } else {
+      alert("Failed to enroll fingerprint: " + responseBody); // Display the error message in the alert
+    }
+  } catch (error) {
+    console.log("Error:", error);
+    alert("Something went wrong: " + error.message); // Display the error message in the alert
+  }
+};
 
 
   const handleSubmit = async (e) => {
@@ -158,7 +185,7 @@ const handleEnroll1 = async () => {
           <p className='uname'>Username : {newuser.username}</p>
           <p className='mb-2 mt-2'>User Finger ID : <span className='ID'>{newuser.userId}</span> </p>
           <button className='addUser mr-2' id='outside' onClick={()=> handleEnroll1(newuser.userId)}>Enroll OutSide Fingerprint</button>
-          <button className='addUser' onClick={()=> handleEnroll1(newuser.userId)}>Enroll Inside Fingerprint</button>
+          <button className='addUser' onClick={()=> handleEnroll2(newuser.userId)}>Enroll Inside Fingerprint</button>
         </div>
       
       }
