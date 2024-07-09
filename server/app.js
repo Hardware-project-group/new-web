@@ -1,35 +1,49 @@
+import dotenv from 'dotenv'
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import mysql from 'mysql';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config();
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors({
-    origin: 'http://localhost:3000', // Allow requests from your frontend
-    credentials: true // Allow credentials (cookies, authorization headers, etc.)
+    origin: 'http://localhost:3000', 
+    credentials: true 
 }));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+app.use(bodyParser.json({ limit: '100mb' }));
 app.use(cookieParser());
 app.use(session({
-    secret: 'your-secret-key', // Change this to a secure random key
+    secret: 'your-secret-key',
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false } // Set secure:true if using HTTPS
+    cookie: { secure: false } 
 }));
 
-// MySQL Connection
 const con = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "StockSync"
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PW || "",
+    database: process.env.DB || "StockSync"
 });
+// const con2 = mysql.createConnection({
+//     host: "sql12.freesqldatabase.com",
+//     user:"sql12718314",
+//     password: "2Bbynx9UkN",
+//     database:"sql12718314"
+// });
 
 con.connect(function(err) {
     if (err) {
@@ -38,18 +52,24 @@ con.connect(function(err) {
     }
     console.log('Connected to MySQL database');
 });
+// con2.connect(function(err) {
+//     if (err) {
+//         console.error('Error connecting to database:', err.stack);
+//         return;
+//     }
+//     console.log('Connected to MySQL database');
+// });
 
-// Routes
+
 app.get('/', (req, res) => {
     res.json({ message: "Hello world" });
-    console.log(req.session.username); // Log session username
+    console.log(req.session.username); 
 });
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     console.log(req.body);
 
-    // Example authentication logic
     con.query('SELECT * FROM users WHERE username = ?', [username], (err, result) => {
         if (err) {
             console.error('Error querying database:', err.stack);
@@ -66,7 +86,7 @@ app.post('/login', (req, res) => {
                     res.status(500).json({ message: 'Session save error' });
                     return;
                 }
-                console.log(req.session.username); // Log session username
+                console.log(req.session.username); 
                 res.status(200).json({ message: 'Login successful', session: req.session });
             });
         } else {
@@ -91,7 +111,6 @@ app.post('/create-user', (req, res) => {
     console.log(username, password, userType);
     console.log(req.body);
 
-    // Validate input data
     if (!username || !password || !userType) {
         return res.status(400).json({ error: 'Please provide username, password, and userType' });
     }
@@ -120,6 +139,22 @@ app.post('/create-user', (req, res) => {
     });
 });
 
+app.post('/imagess', (req, res) => {
+    const { accessId } = req.body;
+    const selectQuery = 'SELECT image FROM image WHERE accessId = ?';
+        con2.query(selectQuery, [accessId], (err, result) => {
+            if (err) {
+                console.error('Error querying database:', err.stack);
+                return res.status(500).json({ message: 'Database error' });
+            }
+
+            if (result.length > 0) {
+                res.status(201).json(result[0]);
+            } else {
+                res.status(404).json({ message: 'User not found' });
+            }
+        });
+})
 
 app.get('/check-session', (req, res) => {
     if (req.session.username) {
@@ -196,12 +231,26 @@ app.get('/profile/:id', (req, res) => {
     });
 });
 
+app.get('/image/:id', (req, res) => {
+    const imageId = req.params.id;
+    const query = 'SELECT file_name FROM images WHERE id = ?';
 
+    con.query(query, [imageId], (err, results) => {
+        if (err) {
+            console.error('Error querying database:', err.stack);
+            return res.status(500).json({ error: 'Database query error' });
+        }
 
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Image not found' });
+        }
 
+        const fileName = results[0].file_name;
+        const filePath = path.join(__dirname, 'uploads', fileName);
+        res.sendFile(filePath);
+    });
+});
 
-
-//esp request
 
 app.post('/SendIp', (req, res) => {
     const { Board, ip } = req.body;
@@ -220,7 +269,6 @@ app.post('/SendIp', (req, res) => {
 });
 
 
-//
 
 app.post('/get-ip', (req, res) => {
     const { id: Board } = req.body;
@@ -244,8 +292,6 @@ app.post('/get-ip', (req, res) => {
 });
 
 
-//
-
 app.post('/process-tag', (req, res) => {
     const { tag } = req.body;
 
@@ -253,9 +299,7 @@ app.post('/process-tag', (req, res) => {
         return res.status(400).json({ message: 'All fields are required.' });
     }
 
-    const tagId = tag.trim().replace(/\s+/g, ''); // Clean and sanitize the tagId
-
-    // Debugging output
+    const tagId = tag.trim().replace(/\s+/g, ''); 
     console.log("Processed tagId:", tagId);
 
     const sql = 'SELECT tagId, serialNumber FROM tagdetails WHERE tagId = ?';
@@ -263,11 +307,8 @@ app.post('/process-tag', (req, res) => {
         if (error) {
             return res.status(500).json({ message: 'Database query error: ' + error.message });
         }
-
-        // Set the time zone to Sri Lanka
         process.env.TZ = 'Asia/Colombo';
 
-        // Get the current date and time
         const currentDate = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
         const currentTime = new Date().toLocaleTimeString('en-GB', { hour12: false }); // "HH:mm:ss"
 
@@ -275,17 +316,14 @@ app.post('/process-tag', (req, res) => {
             const fetchedTagId = results[0].tagId;
             const serialNumber = results[0].serialNumber;
 
-            // Debugging output
             console.log("Fetched tagId:", fetchedTagId);
 
-            // Insert into grabproduct table
             const insertSql = 'INSERT INTO grabproduct (tagId, SerialNumber, grabDate, grabTime) VALUES (?, ?, ?, ?)';
             con.query(insertSql, [fetchedTagId, serialNumber, currentDate, currentTime], (insertError) => {
                 if (insertError) {
                     return res.status(500).json({ message: 'Failed to insert tag into grabproduct: ' + insertError.message });
                 }
 
-                // Delete from tagdetails table
                 const deleteSql = 'DELETE FROM tagdetails WHERE tagId = ?';
                 con.query(deleteSql, [fetchedTagId], (deleteError) => {
                     if (deleteError) {
@@ -322,7 +360,7 @@ app.post('/update-inside-finger', (req, res) => {
     }
 
     const userId = parseInt(id, 10);
-    const insideFinger = true; // Assuming "true" means 1 in the database
+    const insideFinger = true;
 
     const sql = 'UPDATE users SET insideFinger = ? WHERE userId = ?';
     con.query(sql, [insideFinger, userId], (error, results) => {
@@ -350,8 +388,6 @@ app.post('/update-warehouse-access', (req, res) => {
 
     const intId = parseInt(id, 10);
     const currentTime = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Colombo', hour12: false });
-
-    // Update warehouseaccessdetail
     const sql1 = 'UPDATE warehouseaccessdetail SET OutTime = ? WHERE userId = ?';
     con.query(sql1, [currentTime, intId], (error, results) => {
         if (error) {
@@ -360,7 +396,6 @@ app.post('/update-warehouse-access', (req, res) => {
 
         console.log('Warehouse access detail updated successfully.');
 
-        // Update grabproduct
         const sql2 = 'UPDATE grabproduct SET userId = ? WHERE userId IS NULL';
         con.query(sql2, [intId], (error, results) => {
             if (error) {
@@ -398,10 +433,6 @@ app.post('/update-outside-finger', (req, res) => {
     });
 });
 
-
-
-//
-
 app.post('/insert-access-detail', (req, res) => {
     const { id } = req.body;
 
@@ -418,11 +449,103 @@ app.post('/insert-access-detail', (req, res) => {
         if (error) {
             return res.status(500).json({ error: 'Database error: ' + error.message });
         }
-
-        res.status(200).json({ message: 'New access detail inserted successfully' });
+        const sql2 = 'SELECT max(accessId) from warehouseaccessdetail'
+        res.status(200).json({
+            message: 'New access detail inserted successfully',
+            accessId: results.insertId
+        });
     });
 });
-// Start the server
+
+
+app.post('/SendDoorState', (req, res) => {
+    const { Door } = req.body;
+
+    if (!Door) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    const state = Door;
+
+     const sql = 'UPDATE doorstate SET state = ? WHERE id = ?';
+        con.query(sql, [Door, 1], (error, results) => {
+        if (error) {
+            return res.status(500).json({ error: 'Database error: ' + error.message });
+        }
+
+        res.status(200).json({ message: 'Door State Updated' });
+    });
+});
+
+app.get('/getPersonCount', (req, res) => {
+  const query = 'SELECT COUNT(AccessId) AS personCount FROM warehouseaccessdetail WHERE OutTime IS NULL';
+
+  con.query(query, (error, results) => {
+    if (error) {
+      console.error(error);
+      res.status(500).send('Error retrieving person count');
+    } else {
+      res.json({ personCount: results[0].personCount });
+    }
+  });
+});
+
+app.post('/sendImage', (req, res) => {
+    const { image } = req.body;
+
+    if (!image) {
+        return res.status(400).json({ error: 'No image provided' });
+    }
+
+    // Generate a unique file name with UUID
+    const fileName = `image_${uuidv4()}.jpg`;
+    const filePath = path.join(__dirname, 'uploads', fileName);
+
+    // Decode Base64 image
+    const imageBuffer = Buffer.from(image, 'base64');
+
+    // Save image to the server's filesystem
+    fs.writeFile(filePath, imageBuffer, (err) => {
+        if (err) {
+            console.error('Error saving image:', err);
+            return res.status(500).json({ error: 'Failed to save image' });
+        }
+
+        // Save image info to the database
+        const insertQuery = 'INSERT INTO images (file_name, timestamp) VALUES (?, ?)';
+        const timestamp = new Date();
+
+        con.query(insertQuery, [fileName, timestamp], (dbErr) => {
+            if (dbErr) {
+                console.error('Error saving image info to database:', dbErr);
+                return res.status(500).json({ error: 'Failed to save image info to database' });
+            }
+
+            res.status(200).json({ message: 'Image saved successfully' });
+        });
+    });
+});
+
+app.post('/addimage', (req, res) => {
+    const { image, accessId } = req.body;
+    console.log(image,accessId);  
+    console.log("a");
+
+    if (!image || !accessId) {
+        return res.status(400).json({ message: 'Missing image or accessId in request body' });
+    }
+
+    const sql = 'INSERT INTO image (image, accessId) VALUES (?, ?)';
+    con.query(sql, [image, accessId], (err, result) => {
+      if (err) {
+        console.error('Error inserting image into database:', err);
+        return res.status(500).json({ message: 'Database query error' });
+      }
+      res.status(200).json({ message: 'Image data saved successfully' });
+    });
+});
+
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });

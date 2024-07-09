@@ -48,7 +48,7 @@ function Profile({user}) {
   const encodedData = new URLSearchParams(`fingerID=${userData.userId}`);
 
   try {
-    const response = await fetch('http://192.168.137.230/enroll', {
+    const response = await fetch('http://192.168.137.196/enroll', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -76,7 +76,7 @@ const handleEnroll2 = async () => {
   const encodedData = new URLSearchParams(`fingerID=${userData.userId}`);
 
   try {
-    const response = await fetch('http://192.168.137.177/enroll', {
+    const response = await fetch('http://192.168.137.196/enroll', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
