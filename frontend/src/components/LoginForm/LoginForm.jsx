@@ -50,7 +50,7 @@ function LoginForm({ onLogin , user}) {
                             }
                             {user.userType === "admin" && 
                                 <>
-                                    <span className='btn'>Update Stock</span>
+                                    <span className='btn'><a href="/updatestock">Update Stock</a></span>
                                     <span className='btn'><a href="/user">User Details</a></span>
                                     <span className='btn'>System Setting</span>
                                 </>

@@ -24,7 +24,7 @@
     flex-direction: column;
     input{
         margin-bottom: 1.3rem;
-        background: transparent;
+        background: rgb(200, 200, 200);
         outline: none;
         border: none;
         border-radius: 0.5rem;

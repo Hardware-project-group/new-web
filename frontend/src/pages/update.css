@@ -1,0 +1,17 @@
+.dropdown2{
+    display: flex;
+    gap: 2rem;
+}
+.title{
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+input[type="button"]{
+    margin-top: 2rem;
+    padding: 0.5rem 1.5rem;
+    background: #000;
+    color: white;
+    border-radius: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+}

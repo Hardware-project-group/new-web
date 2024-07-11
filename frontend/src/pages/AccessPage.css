@@ -1,0 +1,32 @@
+.access-container{
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+}
+.access-header{
+    font-weight: bolder;
+    text-align: center;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: red;
+}
+p{
+    font-weight: bold;
+}
+.load-btn{
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+    background: #000;
+    color: white;
+    border-radius: 2rem;
+    margin-bottom: 2rem;
+}
+.images-container3{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    img{
+        width: 50%;
+    }
+}

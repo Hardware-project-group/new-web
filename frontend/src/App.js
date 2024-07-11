@@ -8,6 +8,8 @@ import User from './pages/user';
 import Profile from './pages/Profile';
 import Access from './pages/Access';
 import StockSync from './pages/StockSync';
+import UpdateStock from './pages/UpdateStock';
+import AccessPagePersonal from './pages/AccessPage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -83,6 +85,9 @@ function App() {
                 <Route path='/profile/:id' element={<Profile/>} user={ user} />
                 <Route path='/access' element={<Access />} user={user} />
                 <Route path='/stockDetails' element={<StockSync />} user={user} />
+                <Route path='/updatestock' element={<UpdateStock />} user={user} />
+               <Route path="/access-details/:accessId" element={<AccessPagePersonal />} />
+                
               </>
             }
           </Routes>

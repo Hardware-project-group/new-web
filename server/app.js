@@ -9,6 +9,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
+import { error, log } from 'console';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -182,6 +183,117 @@ app.get('/get-user', (req, res) => {
     });
 });
 
+app.get('/get-tag-details', (req, res) => {
+    const query = 'SELECT * FROM tagdetails WHERE productId IS NULL';
+    con.query(query, (err, results) => {
+        if (err) {
+            console.error('Error querying database:', err.stack);
+            res.status(500).json({ message: 'Database error' });
+            return;
+        }
+        //console.log(results);
+        res.status(200).json(results);
+    });
+});
+app.get('/get-product-details', (req, res) => {
+    const query = 'SELECT * FROM products';
+    con.query(query, (err, results) => {
+        if (err) {
+            console.error('Error querying database:', err.stack);
+            res.status(500).json({ message: 'Database error' });
+            return;
+        }
+        console.log(results);
+        res.status(200).json(results);
+    });
+});
+
+
+app.post('/update-stock', (req, res) => {
+    const { tagId, productId, serialNumber } = req.body;
+    console.log(tagId);
+    console.log(productId);
+    console.log(serialNumber);
+
+    const query = 'UPDATE tagdetails SET productId = ? , serialNumber = ? WHERE tagId = ?';
+    con.query(query, [productId, serialNumber, tagId], (err, results) => {
+        if (err) {
+            console.error('Error inserting data:', err.stack);
+            res.status(500).json({ message: 'Database error' });
+            return;
+        }
+        console.log("Update");
+        res.status(200).json({ message: 'Stock updated successfully' });
+    });
+});
+app.get('/access-details/:accessId', (req, res) => {
+    const accessId = req.params.accessId;
+    console.log(accessId);
+
+    // Query to fetch warehouse access details and associated user
+    const query1 = `
+        SELECT 
+            w.*, 
+            u.username 
+        FROM 
+            warehouseaccessdetail AS w 
+        LEFT JOIN 
+            users AS u 
+        ON 
+            w.userId = u.userId 
+        WHERE 
+            w.accessId = ?`;
+
+    // Query to fetch grab product details and associated product name
+    const query2 = `
+        SELECT 
+            g.SerialNumber,
+            p.productName
+        FROM 
+            grabproduct AS g 
+        LEFT JOIN 
+            products AS p 
+        ON 
+            g.productId = p.productCode 
+        WHERE 
+            g.accessId = ?`;
+
+    // Execute both queries in parallel
+    con.query(query1, [accessId], (err, results1) => {
+        if (err) {
+            console.error('Error querying warehouseaccessdetail:', err.stack);
+            res.status(500).json({ message: 'Database error' });
+            return;
+        }
+
+        // If no results found for accessId
+        if (results1.length === 0) {
+            res.status(404).json({ message: 'Access details not found' });
+            return;
+        }
+
+        // Execute the second query
+        con.query(query2, [accessId], (err, results2) => {
+            if (err) {
+                console.error('Error querying grabproduct:', err.stack);
+                res.status(500).json({ message: 'Database error' });
+                return;
+            }
+
+            // Combine results from both queries
+            const combinedResults = {
+                warehouseAccessDetail: results1[0],
+                grabProductDetails: results2
+            };
+
+            console.log(combinedResults);
+            res.status(200).json(combinedResults);
+        });
+    });
+});
+
+
+
 app.get('/get-access-details', (req, res) => {
     con.query('SELECT * FROM warehouseaccessdetail LEFT JOIN users ON warehouseaccessdetail.userId = users.userId;', (err, results) => {
         if (err) {
@@ -189,17 +301,39 @@ app.get('/get-access-details', (req, res) => {
             res.status(500).json({ message: 'Database error' });
             return;
         }
-        const accessDetails = results.map(element => ({
-            userId: element.userId,
-            username: element.username,
-            accessDate: element.AccessDate,
-            InTime: element.InTime,
-            OutTime: element.OutTime,
-        }));
-        console.log(accessDetails);
-        res.status(200).json(accessDetails);
+
+        const promises = results.map(element => {
+            return new Promise((resolve, reject) => {
+                con.query('SELECT count(*) as count FROM grabproduct WHERE accessId = ?', [element.AccessId], (err, results2) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve({
+                            userId: element.userId,
+                            username: element.username,
+                            accessDate: element.AccessDate,
+                            InTime: element.InTime,
+                            OutTime: element.OutTime,
+                            accessId: element.AccessId,
+                            grabProductCount: results2[0].count
+                        });
+                    }
+                });
+            });
+        });
+
+        Promise.all(promises)
+            .then(accessDetails => {
+                console.log(accessDetails);
+                res.status(200).json(accessDetails);
+            })
+            .catch(err => {
+                console.error('Error querying database:', err.stack);
+                res.status(500).json({ message: 'Database error' });
+            });
     });
 });
+
 
 app.get('/profile/:id', (req, res) => {
     const userId = req.params.id;
@@ -302,7 +436,7 @@ app.post('/process-tag', (req, res) => {
     const tagId = tag.trim().replace(/\s+/g, ''); 
     console.log("Processed tagId:", tagId);
 
-    const sql = 'SELECT tagId, serialNumber FROM tagdetails WHERE tagId = ?';
+    const sql = 'SELECT tagId, serialNumber,productId FROM tagdetails WHERE tagId = ?';
     con.query(sql, [tagId], (error, results) => {
         if (error) {
             return res.status(500).json({ message: 'Database query error: ' + error.message });
@@ -315,11 +449,12 @@ app.post('/process-tag', (req, res) => {
         if (results.length > 0) {
             const fetchedTagId = results[0].tagId;
             const serialNumber = results[0].serialNumber;
+            const productCode = results[0].productId;
 
             console.log("Fetched tagId:", fetchedTagId);
 
-            const insertSql = 'INSERT INTO grabproduct (tagId, SerialNumber, grabDate, grabTime) VALUES (?, ?, ?, ?)';
-            con.query(insertSql, [fetchedTagId, serialNumber, currentDate, currentTime], (insertError) => {
+            const insertSql = 'INSERT INTO grabproduct (tagId, SerialNumber, grabDate, grabTime,productCode) VALUES (?, ?, ?, ?,?)';
+            con.query(insertSql, [fetchedTagId, serialNumber, currentDate, currentTime,productCode], (insertError) => {
                 if (insertError) {
                     return res.status(500).json({ message: 'Failed to insert tag into grabproduct: ' + insertError.message });
                 }
@@ -377,10 +512,10 @@ app.post('/update-inside-finger', (req, res) => {
 });
 
 
-//
 
 app.post('/update-warehouse-access', (req, res) => {
     const { id } = req.body;
+    console.log(id);
 
     if (!id) {
         return res.status(400).json({ error: 'All fields are required.' });
@@ -389,26 +524,43 @@ app.post('/update-warehouse-access', (req, res) => {
     const intId = parseInt(id, 10);
     const currentTime = new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Colombo', hour12: false });
     const sql1 = 'UPDATE warehouseaccessdetail SET OutTime = ? WHERE userId = ?';
+
     con.query(sql1, [currentTime, intId], (error, results) => {
         if (error) {
             return res.status(500).json({ error: 'Execute failed: ' + error.message });
         }
 
         console.log('Warehouse access detail updated successfully.');
-
-        const sql2 = 'UPDATE grabproduct SET userId = ? WHERE userId IS NULL';
-        con.query(sql2, [intId], (error, results) => {
+        const sql3 = 'SELECT AccessId FROM warehouseaccessdetail WHERE OutTime = ? AND userId = ?';
+        
+        con.query(sql3, [currentTime, intId], (error, results2) => {
             if (error) {
-                return res.status(500).json({ error: 'Execute failed: ' + error.message });
+                return res.status(500).json({ error: "Database accessId failed" });
             }
+            if (results2.length === 0) {
+                return res.status(404).json({ error: "AccessId not found" });
+            }
+            
+            const accessId = results2[0].AccessId;
+            console.log(accessId);
 
-            console.log('Grab product updated successfully.');
-            res.status(200).json({ message: 'Warehouse access detail and grab product updated successfully.' });
+            const sql2 = 'UPDATE grabproduct SET userId = ?, accessId = ? WHERE userId IS NULL';
+            con.query(sql2, [intId, accessId], (error, results) => {
+                if (error) {
+                    return res.status(500).json({ error: 'Execute failed: ' + error.message });
+                }
+                
+                console.log("Grab item updated!");
+                console.log('Grab product updated successfully.');
+                res.status(200).json({ message: 'Warehouse access detail and grab product updated successfully.' });
+            });
+
         });
     });
 });
 
-//
+
+
 app.post('/update-outside-finger', (req, res) => {
     const { id } = req.body;
 
@@ -434,7 +586,9 @@ app.post('/update-outside-finger', (req, res) => {
 });
 
 app.post('/insert-access-detail', (req, res) => {
+    console.log("Insert req come");
     const { id } = req.body;
+    console.log(id);
 
     if (!id) {
         return res.status(400).json({ error: 'All fields are required.' });
@@ -497,21 +651,17 @@ app.post('/sendImage', (req, res) => {
         return res.status(400).json({ error: 'No image provided' });
     }
 
-    // Generate a unique file name with UUID
     const fileName = `image_${uuidv4()}.jpg`;
     const filePath = path.join(__dirname, 'uploads', fileName);
 
-    // Decode Base64 image
     const imageBuffer = Buffer.from(image, 'base64');
 
-    // Save image to the server's filesystem
     fs.writeFile(filePath, imageBuffer, (err) => {
         if (err) {
             console.error('Error saving image:', err);
             return res.status(500).json({ error: 'Failed to save image' });
         }
 
-        // Save image info to the database
         const insertQuery = 'INSERT INTO images (file_name, timestamp) VALUES (?, ?)';
         const timestamp = new Date();
 
@@ -545,6 +695,65 @@ app.post('/addimage', (req, res) => {
     });
 });
 
+app.get('/get-esp-ip1', (req, res) => {
+    const query = 'SELECT IpAddress FROM ip WHERE Board = "ESP1"';
+
+  con.query(query, (err, results) => {
+    if (err) {
+      console.error('Error querying database:', err.stack);
+      res.status(500).json({ message: 'Database error' });
+      return;
+    }
+    if (results.length === 0) {
+      res.status(404).json({ message: 'IP address not found' });
+      return;
+      }
+      console.log( {ip: results[0].IpAddress});
+    res.status(200).json({ ip: results[0].IpAddress });
+  });
+});
+app.get('/get-esp-ip2', (req, res) => {
+    const query = 'SELECT IpAddress FROM ip WHERE Board = "ESP2"';
+
+  con.query(query, (err, results) => {
+    if (err) {
+      console.error('Error querying database:', err.stack);
+      res.status(500).json({ message: 'Database error' });
+      return;
+    }
+    if (results.length === 0) {
+      res.status(404).json({ message: 'IP address not found' });
+      return;
+      }
+      console.log( {ip: results[0].IpAddress});
+    res.status(200).json({ ip: results[0].IpAddress });
+  });
+});
+
+app.get('/get-stock-details', (req, res) => {
+  const sql = `
+    SELECT 
+      p.productCode, 
+      p.productName, 
+      p.productCategory, 
+      COUNT(t.productId) AS stockLevel
+    FROM 
+      products p
+    LEFT JOIN 
+      tagdetails t ON p.productName = t.productId
+    GROUP BY 
+      p.productCode, 
+      p.productName, 
+      p.productCategory;
+  `;
+  con.query(sql, (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: 'Database query failed: ' + error.message });
+    }
+      res.status(200).json(results);
+      console.log(results);
+  });
+});
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);

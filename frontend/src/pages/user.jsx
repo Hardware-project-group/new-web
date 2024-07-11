@@ -17,21 +17,43 @@ function User() {
     setPage(false);
     setSuccess(false);
   }
-const handleEnroll1 = async () => {
-  const encodedData = new URLSearchParams(`fingerID=${newuser.userId}`);
-
+ const handleEnroll1 = async () => {
   try {
-    const response = await fetch('http://192.168.137.196/enroll', {
+    // Fetch the IP address from the backend
+    const response2 = await fetch('http://localhost:5000/get-esp-ip1', {
+      method: 'GET',
+    });
+    
+    // Check if the request was successful
+    if (!response2.ok) {
+      throw new Error('Failed to fetch ESP IP address');
+    }
+
+    // Parse the JSON response
+    const data = await response2.json();
+    const IP = data.ip;
+
+    // Encode the data to be sent to the ESP
+    const encodedData = new URLSearchParams(`fingerID=${newuser.userId}`);
+
+    // Make the request to the ESP to enroll the fingerprint
+    const response = await fetch(`http://${IP}/enroll`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: encodedData.toString(),
     });
+
+    // Read the response body as text
+    const responseBody = await response.text();
+
+    // Log the IP and response for debugging
+    console.log(IP);
     console.log(response);
-    const responseBody = await response.text(); // Read the response body as text
     console.log(responseBody);
 
+    // Check if the enrollment was successful
     if (response.ok) {
       alert('Enroll Success: ' + responseBody); // Display the response body in the alert
       document.getElementById('outside').style.display = "none";
@@ -46,23 +68,45 @@ const handleEnroll1 = async () => {
 
   
 const handleEnroll2 = async () => {
-  const encodedData = new URLSearchParams(`fingerID=${newuser.userId}`);
-
   try {
-    const response = await fetch('http://192.168.137.196/enroll', {
+    // Fetch the IP address from the backend
+    const response2 = await fetch('http://localhost:5000/get-esp-ip2', {
+      method: 'GET',
+    });
+    
+    // Check if the request was successful
+    if (!response2.ok) {
+      throw new Error('Failed to fetch ESP IP address');
+    }
+
+    // Parse the JSON response
+    const data = await response2.json();
+    const IP = data.ip;
+
+    // Encode the data to be sent to the ESP
+    const encodedData = new URLSearchParams(`fingerID=${newuser.userId}`);
+
+    // Make the request to the ESP to enroll the fingerprint
+    const response = await fetch(`http://${IP}/enroll`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: encodedData.toString(),
     });
+
+    // Read the response body as text
+    const responseBody = await response.text();
+
+    // Log the IP and response for debugging
+    console.log(IP);
     console.log(response);
-    const responseBody = await response.text(); // Read the response body as text
     console.log(responseBody);
 
+    // Check if the enrollment was successful
     if (response.ok) {
       alert('Enroll Success: ' + responseBody); // Display the response body in the alert
-      document.getElementById('outside').style.display = "none";
+      document.getElementById('inside').style.display = "none";
     } else {
       alert("Failed to enroll fingerprint: " + responseBody); // Display the error message in the alert
     }
@@ -185,7 +229,7 @@ const handleEnroll2 = async () => {
           <p className='uname'>Username : {newuser.username}</p>
           <p className='mb-2 mt-2'>User Finger ID : <span className='ID'>{newuser.userId}</span> </p>
           <button className='addUser mr-2' id='outside' onClick={()=> handleEnroll1(newuser.userId)}>Enroll OutSide Fingerprint</button>
-          <button className='addUser' onClick={()=> handleEnroll2(newuser.userId)}>Enroll Inside Fingerprint</button>
+          <button className='addUser' id='inside' onClick={()=> handleEnroll2(newuser.userId)}>Enroll Inside Fingerprint</button>
         </div>
       
       }
